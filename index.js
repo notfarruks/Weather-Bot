@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const axios = require('axios');
 
-const BOT_KEY = process.env.BOT_KEY || "8409072600:AAEc3opw-h5X9VheJMioQ8EOjuPeL7AIZQg";
+const BOT_KEY = process.env.BOT_KEY || "8244410500:AAEbNeW7u-VdexabOTyOtEfTc3tEFc9wCjE";
 const WEATHER_API = process.env.WEATHER_API || "39a3ee21c848b47667142a8229f2a6c5";
 
 const bot = new Telegraf(BOT_KEY)
