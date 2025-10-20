@@ -100,11 +100,80 @@ bot.hears(/[A-Za-z]+/i, async (ctx)=>{
         const weather = data.weather[0].description
         const temp = data.main.temp
 
-        ctx.reply(`${data.name}: ${temp}°C, ${weather}`)
+        const emoji = iconFor(weather.id)
+        const message = `${emoji} ${data.name}: ${temp.toFixed(1)}°C, ${weather.description}`
+        ctx.reply(message)
     } catch (error){
         ctx.reply("Could not find the city. Please try again")
     }
 })
+
+bot.on("inline_query", async (ctx) => {
+  const query = ctx.inlineQuery.query.trim();
+  if (!query) return; // nothing typed
+
+  const city = query;
+  const currentUrl = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${process.env.WEATHER_API}&units=metric`;
+  const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${process.env.WEATHER_API}&units=metric`;
+
+  try {
+    // --- Current weather ---
+    const curRes = await axios.get(currentUrl);
+    const cur = curRes.data;
+    const curWeather = cur.weather[0];
+    const curEmoji = iconFor(curWeather.id);
+    const currentText = `${curEmoji} ${cur.name}: ${cur.main.temp.toFixed(1)}°C, ${curWeather.description}`;
+
+    // --- 3-Day Forecast ---
+    const foreRes = await axios.get(forecastUrl);
+    const { city: cityMeta, list } = foreRes.data;
+    const tz = cityMeta.timezone || 0;
+
+    // group slices by local date
+    const buckets = {};
+    for (const item of list) {
+      const ymd = toLocalYMD(item.dt, tz);
+      (buckets[ymd] ??= []).push(item);
+    }
+    const dates = Object.keys(buckets).sort().slice(0, 3);
+    let forecastMsg = `📅 3-Day Forecast for ${cityMeta.name}:\n`;
+    for (const d of dates) {
+      const s = summarizeDay(buckets[d]);
+      forecastMsg += `\n${s.emoji} ${d}: ${s.min}–${s.max}°C, ${s.desc}`;
+    }
+
+    // --- Prepare inline results ---
+    const results = [
+      {
+        type: "article",
+        id: "1",
+        title: `🌡️ Current Weather — ${cur.name}`,
+        description: `${cur.main.temp.toFixed(1)}°C, ${curWeather.description}`,
+        input_message_content: { message_text: currentText },
+        thumb_url: "https://openweathermap.org/img/wn/" + curWeather.icon + "@2x.png"
+      },
+      {
+        type: "article",
+        id: "2",
+        title: `📅 3-Day Forecast — ${cityMeta.name}`,
+        description: "Tap to send detailed forecast",
+        input_message_content: { message_text: forecastMsg },
+        thumb_url: "https://openweathermap.org/img/wn/" + list[0].weather[0].icon + "@2x.png"
+      }
+    ];
+
+    await ctx.answerInlineQuery(results);
+  } catch (e) {
+    await ctx.answerInlineQuery([{
+      type: "article",
+      id: "0",
+      title: "❌ City not found",
+      input_message_content: { message_text: "Could not find that city." }
+    }]);
+  }
+});
+
+
 
 bot.launch()
 
@@ -113,7 +182,5 @@ const app = express();
 app.get('/', (req, res) => res.send('Weather Bot is running ✅'));
 app.listen(process.env.PORT || 10000);
 
-// Forecasts (/forecast)
-// Custom emojis for weather ☀️🌧️🌩️
 // Inline mode (type @YourBot Baku)
 // Location-based weather (using Telegram’s location feature)
