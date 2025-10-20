@@ -101,7 +101,7 @@ bot.hears(/[A-Za-z]+/i, async (ctx)=>{
         const temp = data.main.temp
 
         const emoji = iconFor(weather.id)
-        const message = `${emoji} ${data.name}: ${temp.toFixed(1)}°C, ${weather.description}`
+        const message = `${emoji} ${data.name}: ${temp.toFixed(1)}°C, ${description}`
         ctx.reply(message)
     } catch (error){
         ctx.reply("Could not find the city. Please try again")
